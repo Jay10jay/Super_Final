@@ -1,0 +1,372 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>SPES QR Attendance</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <link href="https://unpkg.com/lucide-static@latest/icons.css" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #121212;
+      color: #fff;
+      margin: 0;
+      scroll-behavior: smooth;
+    }
+    header {
+      background: linear-gradient(90deg, #43cea2, #185a9d);
+      padding: 20px;
+    }
+    .header-flex {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      text-align: center;
+    }
+    .header-flex img {
+      height: 50px;
+    }
+    .header-center {
+      flex: 1;
+    }
+    .header-center h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+    .header-center p {
+      margin: 5px 0 0;
+      font-style: italic;
+    }
+    nav {
+      background: #1f1f1f;
+      display: flex;
+      justify-content: center;
+      padding: 10px;
+      gap: 5px;
+    }
+    nav button {
+      background: #333;
+      border: none;
+      color: white;
+      padding: 10px 16px;
+      cursor: pointer;
+      border-radius: 8px;
+      transition: 0.3s;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    nav button:hover, nav button.active {
+      background: linear-gradient(135deg, #43cea2, #185a9d);
+    }
+    section {
+      display: none;
+      padding: 20px;
+      max-width: 1000px;
+      margin: auto;
+      animation: fadeInUp 0.5s ease;
+    }
+    section.active {
+      display: block;
+    }
+    @keyframes fadeInUp {
+      from {opacity: 0; transform: translateY(10px);}
+      to {opacity: 1; transform: translateY(0);}
+    }
+    .card {
+      background: #1e1e1e;
+      padding: 20px;
+      border-radius: 16px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      margin-bottom: 20px;
+    }
+    input, button, select, canvas {
+      display: block;
+      width: 100%;
+      max-width: 320px;
+      margin: 10px auto;
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: none;
+    }
+    button {
+      background: #4caf50;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #66bb6a;
+    }
+    canvas {
+      background: white;
+      padding: 10px;
+    }
+    #reader {
+      width: 100%;
+      max-width: 320px;
+      margin: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #555;
+      padding: 8px;
+      text-align: center;
+    }
+    th {
+      background-color: #333;
+    }
+    footer {
+      text-align: center;
+      padding: 15px;
+      background: #1f1f1f;
+      color: #aaa;
+      font-size: 14px;
+    }
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #4caf50;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-weight: bold;
+      z-index: 999;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      animation: fadeOut 3s forwards;
+    }
+    .latest-highlight {
+      text-align: center;
+      font-size: 18px;
+      font-weight: bold;
+      background: #2e7d32;
+      color: #fff;
+      padding: 10px;
+      border-radius: 12px;
+      margin-bottom: 10px;
+      display: none;
+    }
+    @keyframes fadeOut {
+      0% {opacity: 1;}
+      100% {opacity: 0;}
+    }
+  </style>
+</head>
+<body>
+<!-- rest will follow -->
+
+  <header>
+    <div class="header-flex">
+      <img src="sq.png" alt="Left Logo" />
+      <div class="header-center">
+        <h1>PESO San Quintin</h1>
+        <p>"Mabilis, dekalidad at may Pusong serbisyo"</p>
+      </div>
+      <img src="peso-1.png" alt="Right Logo" />
+    </div>
+  </header>
+
+  <nav>
+    <button onclick="showSection('scanner')" id="nav-scanner"><i class="lucide-camera"></i>Scanner</button>
+    <button onclick="showSection('generator')" id="nav-generator"><i class="lucide-qr-code"></i>Generate QR</button>
+    <button onclick="showSection('records')" id="nav-records"><i class="lucide-file-text"></i>Attendance</button>
+  </nav>
+
+  <section id="scanner" class="active">
+    <div class="card">
+      <h2>QR Scanner</h2>
+      <div class="latest-highlight" id="latestScan"></div>
+      <select id="scanAction">
+        <option value="Time In AM">Time In AM</option>
+        <option value="Time Out AM">Time Out AM</option>
+        <option value="Time In PM">Time In PM</option>
+        <option value="Time Out PM">Time Out PM</option>
+      </select>
+      <div id="reader"></div>
+      <button id="startBtn" onclick="startScanner()">Start Scanner</button>
+      <button id="stopBtn" onclick="stopScanner()" style="display:none;">Stop Scanner</button>
+      <audio id="beepSound" src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg"></audio>
+    </div>
+  </section>
+
+  <section id="generator">
+    <div class="card">
+      <h2>Generate QR Code</h2>
+      <input type="text" id="nameInput" placeholder="Enter Name" />
+      <button onclick="generateQR()">Generate QR</button>
+      <canvas id="qrCanvas"></canvas>
+      <button onclick="downloadQR()" id="downloadQR" style="display:none;">Download QR Code (JPEG)</button>
+    </div>
+  </section>
+
+  <section id="records">
+    <div class="card">
+      <h2>Attendance Records</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>No</th>
+            <th>Name</th>
+            <th>Date</th>
+            <th>Time In AM</th>
+            <th>Time Out AM</th>
+            <th>Time In PM</th>
+            <th>Time Out PM</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+      <button onclick="downloadCSV()">Download CSV</button>
+      <button onclick="clearTable()" style="background:#e53935;">Clear Table</button>
+    </div>
+  </section>
+
+  <footer>
+    &copy; 2025 SPES Attendance System | Powered by JR
+  </footer>
+
+  <script>
+    function showSection(id) {
+      document.querySelectorAll("section").forEach(sec => sec.classList.remove("active"));
+      document.getElementById(id).classList.add("active");
+      document.querySelectorAll("nav button").forEach(btn => btn.classList.remove("active"));
+      document.getElementById("nav-" + id).classList.add("active");
+      if (id === "scanner") startScanner();
+      else stopScanner();
+    }
+
+    function showToast(msg) {
+      const toast = document.createElement("div");
+      toast.className = "toast";
+      toast.textContent = msg;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    }
+
+    function generateQR() {
+      const name = document.getElementById("nameInput").value.trim();
+      if (!name) return showToast("Enter a name first.");
+      new QRious({
+        element: document.getElementById("qrCanvas"),
+        value: `Name: ${name}`,
+        size: 240,
+        background: 'white',
+        foreground: 'black'
+      });
+      document.getElementById("downloadQR").style.display = 'block';
+    }
+
+    function downloadQR() {
+      const canvas = document.getElementById("qrCanvas");
+      const name = document.getElementById("nameInput").value.trim().replace(/\s+/g, '_');
+      const link = document.createElement('a');
+      link.download = `spes_qr_${name || 'qr'}.jpg`;
+      link.href = canvas.toDataURL("image/jpeg");
+      link.click();
+    }
+
+    let html5QrCode;
+    function startScanner() {
+      if (html5QrCode) return;
+      html5QrCode = new Html5Qrcode("reader");
+      Html5Qrcode.getCameras().then(devices => {
+        const cam = devices.find(c => /back|rear/i.test(c.label)) || devices[0];
+        html5QrCode.start(cam.id, { fps: 10, qrbox: 250 }, onScanSuccess).then(() => {
+          document.getElementById("startBtn").style.display = "none";
+          document.getElementById("stopBtn").style.display = "inline-block";
+        });
+      });
+    }
+
+    function stopScanner() {
+      if (html5QrCode) {
+        html5QrCode.stop().then(() => {
+          html5QrCode.clear();
+          html5QrCode = null;
+          document.getElementById("reader").innerHTML = "";
+          document.getElementById("startBtn").style.display = "inline-block";
+          document.getElementById("stopBtn").style.display = "none";
+        });
+      }
+    }
+
+    const scannedResults = JSON.parse(localStorage.getItem("spesData") || "{}");
+
+    function onScanSuccess(decodedText) {
+      const name = decodedText.match(/name\s*:?(.+)/i)?.[1]?.trim() || decodedText.trim();
+      const action = document.getElementById("scanAction").value;
+      const time = new Date().toLocaleTimeString();
+      const date = new Date().toLocaleDateString();
+
+      if (!scannedResults[name]) scannedResults[name] = {};
+      if (scannedResults[name][action]) return showToast(`${name} already scanned for "${action}".`);
+      scannedResults[name][action] = time;
+      scannedResults[name]["Date"] = date;
+
+      localStorage.setItem("spesData", JSON.stringify(scannedResults));
+      updateTable();
+      showToast(`${name} recorded for "${action}" at ${time}`);
+      highlightScan(name, action, time);
+      document.getElementById("beepSound").play();
+      if (navigator.vibrate) navigator.vibrate(100);
+    }
+
+    function highlightScan(name, action, time) {
+      const box = document.getElementById("latestScan");
+      box.textContent = `✅ ${name} - ${action} @ ${time}`;
+      box.style.display = "block";
+      setTimeout(() => box.style.display = "none", 4000);
+    }
+
+    function updateTable() {
+      const tbody = document.getElementById("tableBody");
+      tbody.innerHTML = "";
+      let count = 1;
+      for (let name in scannedResults) {
+        const row = scannedResults[name];
+        tbody.innerHTML += `
+          <tr>
+            <td>${count++}</td>
+            <td>${name}</td>
+            <td>${row["Date"] || ""}</td>
+            <td>${row["Time In AM"] || ""}</td>
+            <td>${row["Time Out AM"] || ""}</td>
+            <td>${row["Time In PM"] || ""}</td>
+            <td>${row["Time Out PM"] || ""}</td>
+          </tr>`;
+      }
+    }
+
+    function downloadCSV() {
+      let csv = "No,Name,Date,Time In AM,Time Out AM,Time In PM,Time Out PM\n";
+      let count = 1;
+      for (let name in scannedResults) {
+        const row = scannedResults[name];
+        csv += `${count++},${name},${row["Date"] || ""},${row["Time In AM"] || ""},${row["Time Out AM"] || ""},${row["Time In PM"] || ""},${row["Time Out PM"] || ""}\n`;
+      }
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "spes_attendance.csv";
+      a.click();
+    }
+
+    function clearTable() {
+      if (confirm("Clear all attendance data?")) {
+        localStorage.removeItem("spesData");
+        location.reload();
+      }
+    }
+
+    updateTable();
+  </script>
+</body>
+</html>
